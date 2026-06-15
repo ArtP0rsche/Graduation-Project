@@ -1,0 +1,174 @@
+﻿@model IEnumerable<CourseProject.DataModels.Request>
+
+@{
+    ViewData["Title"] = "Поданные заявки";
+}
+
+<head>
+    <meta charset="UTF-8">
+    <title>Таблица заявок</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        thead {
+            background-color: #014898;
+            color: white;
+            font-weight: bold;
+        }
+
+        .for-hover {
+            background-color: #f5f5f5;
+        }
+
+        .status-cell {
+            position: relative;
+        }
+
+        .status-select {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            background-color: transparent;
+            transition: border-color 0.3s;
+        }
+
+        .status-select:focus {
+            border-color: #014898;
+            outline: none;
+            background-color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 bg-light sidebar py-3 border-end d-none d-md-block">
+                <div class="sticky-md-top py-3">
+                    <div class="nav flex-column nav-pills">
+                        <a asp-controller="Users" asp-action="Edit" asp-route-id="@User.FindFirst("UserId").Value" class="nav-link">
+                            <i class="fa fa-user-circle-o me-2"></i> Личный кабинет
+                        </a>
+                        <a asp-controller="Events" asp-action="Index" class="nav-link mt-2"><i class="fa fa-calendar me-2"></i> Мероприятия</a>
+
+                        @if (User.Identity.IsAuthenticated && User.FindFirst("RoleId").Value == "3")
+                        {
+                            <a asp-controller="Requests" asp-action="Index" class="nav-link active mt-2"><i class="fa fa-envelope me-2"></i> Заявки</a>
+                        }
+                    </div>
+                </div>
+            </nav>
+
+            <main class="col-12 col-md-9 col-lg-10 ms-sm-auto px-md-4 py-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="fw-bold mb-0 text-orange">Управление заявками</h4>
+                    <span class="badge bg-primary">Всего: @Model.Count()</span>
+                </div>
+
+                <div class="table-responsive shadow-sm rounded-3">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Мероприятие</th>
+                                <th>Содержимое</th>
+                                <th>Учреждение/ФИО</th>
+                                <th>Людей</th>
+                                <th style="min-width: 250px">Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model)
+                            {
+                                <tr class="for-hover">
+                                    <td class="align-middle fw-bold">@item.Event.Title</td>
+                                    <td class="align-middle text-muted">@item.Content</td>
+                                    <td class="align-middle">
+                                        @if (@item.Institution == "Нет") {
+                                            <text>@item.User.Surname @item.User.Name @item.User.Patronymic</text>
+                                        }
+                                        else {
+                                            @item.Institution
+                                        }
+                                    </td>
+                                    <td class="align-middle">@item.PeopleNumber</td>
+                                    
+                                    @if (item.Event.Status == "В планах")
+                                    {
+                                        <td class="align-middle">
+                                            <form asp-controller="Requests" asp-action="UpdateStatus" class="d-flex gap-2">
+                                                <input type="hidden" name="Id" value="@item.RequestId" />
+                                                    <select name="status" class="form-select form-select-sm status-select">
+                                                        @foreach (var status in (List<string>)ViewBag.StatusOptions)
+                                                        {
+                                                            <!option value="@status" @(status == item.Status ? "selected" : "")>
+                                                                @status
+                                                            </!option>
+                                                        }
+                                                    </select>
+                                        
+                                                    <button type="submit" class="btn btn-sm btn-primary shadow-sm" title="Сохранить">
+                                                        <i class="fa fa-floppy-o"></i>
+                                                    </button>
+                                            
+                                            </form>
+                                        </td>
+                                    }
+                                    else 
+                                    {
+                                        <td class="align-middle">
+                                            @item.Status
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+
+<script>
+    document.querySelectorAll('form[asp-action="UpdateStatus"]').forEach(form => {
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const actionUrl = this.getAttribute('action') || '/Requests/UpdateStatus';
+
+            try {
+                const response = await fetch(actionUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const btn = this.querySelector('button');
+                    const originalBg = btn.style.backgroundColor;
+                    btn.style.backgroundColor = '#198754';
+
+                    setTimeout(() => {
+                        btn.style.backgroundColor = originalBg;
+                    }, 1000);
+                } else {
+                    alert('Не удалось обновить статус. Ошибка сервера.');
+                }
+            } catch (error) {
+                console.error('Ошибка сети:', error);
+            }
+        });
+    });
+</script>

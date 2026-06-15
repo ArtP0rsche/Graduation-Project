@@ -1,0 +1,26 @@
+﻿@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+
+    <div class="nav flex-column nav-pills">
+        @if (!User.Identity.IsAuthenticated)
+        {
+            <a asp-controller="Auth" asp-action="Login" class="nav-link @(currentController == "Auth" && currentAction == "Login" ? "active" : "")">
+                <i class="fa fa-user-circle-o me-2"></i> Личный кабинет
+            </a>
+        }
+        else
+        {
+            <a asp-controller="Users" asp-action="Edit" asp-route-id="@User.FindFirst("UserId").Value"
+               class="nav-link @(currentController == "Users" && currentAction == "Edit" ? "active" : "")">
+                <i class="fa fa-user-circle-o me-2"></i> Личный кабинет
+            </a>
+        }
+        <a asp-controller="Events" asp-action="Index" class="nav-link @(currentController == "Events" && currentAction == "Index" ? "active" : "") mt-2"><i class="fa fa-calendar me-2"></i> Мероприятия</a>
+
+        @if (User.Identity.IsAuthenticated && User.FindFirst("RoleId").Value == "3")
+        {
+            <a asp-controller="Requests" asp-action="Index" class="nav-link @(currentController == "Requests" && currentAction == "Index" ? "active" : "") mt-2"><i class="fa fa-envelope me-2"></i> Заявки</a>
+        }
+    </div>
+}

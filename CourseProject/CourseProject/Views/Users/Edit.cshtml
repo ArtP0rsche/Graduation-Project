@@ -1,0 +1,290 @@
+﻿@model CourseProject.DataModels.User
+
+@{
+    ViewData["Title"] = "Личный кабинет";
+}
+
+<head>
+    <style>
+        .table {
+            vertical-align: middle;
+        }
+
+        .table>thead {
+            vertical-align: middle;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background-color: #FF5124;
+            border-color: #FF5124;
+        }
+
+        .btn-primary:hover {
+            background-color: #e6461f;
+            border-color: #e6461f;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            color: white;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                @TempData["SuccessMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 bg-light sidebar py-3 border-end d-none d-md-block">
+                <div class="sticky-top">
+                    <div class="nav flex-column nav-pills">
+                        <a asp-action="Edit" asp-route-id="@User.FindFirst("UserId").Value" class="nav-link active">
+                            <i class="fa fa-user-circle-o me-2"></i> Личный кабинет
+                        </a>
+                        <a asp-controller="Events" asp-action="Index" class="nav-link mt-2">
+                            <i class="fa fa-calendar me-2"></i> Мероприятия
+                        </a>
+                        @if (User.Identity.IsAuthenticated && User.FindFirst("RoleId").Value == "3")
+                        {
+                            <a asp-controller="Requests" asp-action="Index" class="nav-link mt-2"><i class="fa fa-envelope me-2"></i> Заявки</a>
+                        }
+                    </div>
+                </div>
+            </nav>
+
+            <main class="col-12 col-md-9 col-lg-10 ms-sm-auto px-md-4 py-4">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h4 class="mb-0 fw-bold text-orange">Редактирование профиля</h4>
+                    </div>
+                    <div class="card-body">
+                        <form asp-action="Edit">
+                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                            <input type="hidden" asp-for="UserId" />
+                            <input type="hidden" asp-for="RoleId" />
+                            <input type="hidden" asp-for="Username" />
+                            <input type="hidden" asp-for="Password" />
+
+                            <div class="row g-3">
+                                <div class="col-12 col-md-4">
+                                    <label asp-for="Surname" class="form-label fw-bold">Фамилия</label>
+                                    <input asp-for="Surname" class="form-control" placeholder="Введите фамилию" />
+                                    <span asp-validation-for="Surname" class="text-danger small"></span>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label asp-for="Name" class="form-label fw-bold">Имя</label>
+                                    <input asp-for="Name" class="form-control" placeholder="Введите имя" />
+                                    <span asp-validation-for="Name" class="text-danger small"></span>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label asp-for="Patronymic" class="form-label fw-bold">Отчество</label>
+                                    <input asp-for="Patronymic" class="form-control" placeholder="Введите отчество" />
+                                    <span asp-validation-for="Patronymic" class="text-danger small"></span>
+                                </div>
+                                <div class="col-12 mt-4">
+                                    <button type="submit" class="btn btn-primary px-4">
+                                        <i class="fa fa-save me-2"></i> Сохранить изменения
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                @if (User.FindFirst("RoleId").Value == "1"){
+                    <h4 class="fw-bold mb-3 mt-5">Мои заявки</h4>
+                    if (Model.Requests != null && Model.Requests.Count != 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th style="background-color: #014898; font-weight: bold; text-align: center; vertical-align: middle">Мероприятие</th>
+                                        <th style="background-color: #014898; font-weight: bold; text-align: center; vertical-align: middle">Содержимое</th>
+                                        <th style="background-color: #014898; font-weight: bold; text-align: center; vertical-align: middle">Учреждение</th>
+                                        <th style="background-color: #014898; font-weight: bold; text-align: center; vertical-align: middle">Людей</th>
+                                        <th style="background-color: #014898; font-weight: bold; text-align: center; vertical-align: middle">Статус</th>
+                                        <th style="background-color: #014898; font-weight: bold; text-align: center; vertical-align: middle">Обновлено</th>
+                                        <th style="background-color: #014898; font-weight: bold; text-align: center; vertical-align: middle"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.Requests)
+                                    {
+                                        <tr>
+                                            <td>@item.Event.Title</td>
+                                            <td>@item.Content</td>
+                                            <td>@item.Institution</td>
+                                            <td>@item.PeopleNumber</td>
+                                            <td>@item.Status</td>
+                                            <td>@item.UpdatedOn</td>
+                                            <td>
+                                                @if (item.Status == "На рассмотрении")
+                                                {
+                                                    <button type="button"
+                                                            title="Редактировать"
+                                                            class="btn btn-sm btn-primary"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#editRequestModal"
+                                                            data-id="@item.RequestId"
+                                                            data-user="@item.UserId"
+                                                            data-event="@item.EventId"
+                                                            data-status="@item.Status"
+                                                            data-content="@item.Content"
+                                                            data-institution="@item.Institution"
+                                                            data-people="@item.PeopleNumber">
+                                                        <i class="fa fa-edit"></i>
+                                                    </button>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-light border text-center py-4">
+                            <i class="fa fa-info-circle fa-2x text-muted mb-2"></i>
+                            <p class="mb-0">У вас пока нет поданных заявок</p>
+                        </div>
+                    }
+                }
+            </main>
+        </div>
+    </div>
+</body>
+
+<div class="modal fade" id="editRequestModal" tabindex="-1" aria-labelledby="editRequestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-orange" id="editRequestModalLabel">Редактирование заявки</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="editRequestForm" method="post" action="">
+                    @Html.AntiForgeryToken()
+
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <input type="hidden" name="RequestId" id="editRequestId" />
+                    <input type="hidden" name="UserId" id="editRequestUserId" />
+                    <input type="hidden" name="EventId" id="editRequestEventId" />
+                    <input type="hidden" name="Status" id="editRequestStatus" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Содержимое заявки</label>
+                        <textarea name="Content" id="editRequestContent" class="form-control"
+                                  style="resize: none; min-height: 100px;"
+                                  placeholder="Введите описание заявки..." required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Учреждение</label>
+                        <input name="Institution" id="editRequestInstitution" class="form-control"
+                               placeholder="Название организации" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Количество человек</label>
+                        <input name="PeopleNumber" id="editRequestPeopleNumber" type="number"
+                               class="form-control" min="1" required />
+                    </div>
+
+                    <div class="modal-footer px-0 pb-0 border-0 pt-3 d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary px-4">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const editRequestModal = document.getElementById('editRequestModal');
+            if (editRequestModal) {
+                editRequestModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+
+                const id = button.getAttribute('data-id');
+
+                const form = editRequestModal.querySelector('#editRequestForm');
+                form.action = `/Requests/Edit/${id}`;
+
+                editRequestModal.querySelector('#editRequestId').value = id;
+                editRequestModal.querySelector('#editRequestUserId').value = button.getAttribute('data-user');
+                editRequestModal.querySelector('#editRequestEventId').value = button.getAttribute('data-event');
+                editRequestModal.querySelector('#editRequestStatus').value = button.getAttribute('data-status');
+                editRequestModal.querySelector('#editRequestContent').value = button.getAttribute('data-content');
+                editRequestModal.querySelector('#editRequestInstitution').value = button.getAttribute('data-institution');
+                editRequestModal.querySelector('#editRequestPeopleNumber').value = button.getAttribute('data-people');
+            });
+        }
+
+        document.getElementById('editRequestForm')?.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const actionUrl = this.getAttribute('action') || '/Requests/Edit';
+
+            try {
+                const response = await fetch(actionUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+
+                    if (result.success) {
+                        const modalElement = document.getElementById('editRequestModal');
+                        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                        if (modalInstance) {
+                            modalInstance.hide();
+                        }
+                        location.reload();
+                    } else {
+                        alert(result.message);
+                    }
+                } else {
+                    alert('Критическая ошибка сервера. Не удалось сохранить изменения.');
+                }
+            } catch (error) {
+                console.error('Ошибка отправки формы:', error);
+                alert('Произошла ошибка сети при отправке формы.');
+            }
+        });
+    </script>
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

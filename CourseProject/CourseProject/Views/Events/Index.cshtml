@@ -1,0 +1,673 @@
+﻿@model IEnumerable<CourseProject.DataModels.Event>
+
+@{
+
+    ViewData["Title"] = "Мероприятия";
+
+}
+
+<head>
+    <style>
+        .delete-btn:hover {
+            background-color: darkred;
+        }
+
+        .text-truncate-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background-color: #FF5124;
+            border-color: #FF5124;
+        }
+
+        .btn-primary:hover {
+            background-color: #e6461f;
+            border-color: #e6461f;
+        }
+
+        .card {
+            transition: transform 0.2s;
+            border-color: #014898
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-warning alert-dismissible fade show shadow-sm" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                @TempData["ErrorMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 bg-light sidebar py-3 border-end d-none d-md-block">
+                <div class="sticky-md-top py-3">
+                    <div class="nav flex-column nav-pills">
+                        @if (!User.Identity.IsAuthenticated)
+                        {
+                            <a asp-controller="Auth" asp-action="Login" class="nav-link"><i class="fa fa-user-circle-o me-2"></i> Личный кабинет</a>
+                        }
+                        else
+                        {
+                            <a asp-controller="Users" asp-action="Edit" asp-route-id="@User.FindFirst("UserId").Value" class="nav-link">
+                                <i class="fa fa-user-circle-o me-2"></i> Личный кабинет
+                            </a>
+                        }
+                        <a asp-action="Index" class="nav-link active mt-2"><i class="fa fa-calendar me-2"></i> Мероприятия</a>
+
+                        @if (User.Identity.IsAuthenticated && User.FindFirst("RoleId").Value == "3")
+                        {
+                            <a asp-controller="Requests" asp-action="Index" class="nav-link mt-2"><i class="fa fa-envelope me-2"></i> Заявки</a>
+                        }
+                    </div>
+                </div>
+            </nav>
+
+            <main class="col-12 col-md-9 col-lg-10 py-3 ms-sm-auto px-md-4">
+                <div class="d-flex flex-wrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <div class="flex-grow-1">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="fa fa-search"></i></span>
+                            <input type="text" class="form-control search-input" placeholder="Поиск мероприятий...">
+                        </div>
+                    </div>
+                    <button class="btn btn-outline-secondary filter-btn" 
+                            data-bs-toggle="collapse"
+                            data-bs-target="#filterPanel">
+                        <i class="fa fa-filter"></i>
+                    </button>
+                </div>
+
+                @if (User.Identity.IsAuthenticated && (User.FindFirst("RoleId")?.Value == "3" || User.FindFirst("RoleId")?.Value == "2"))
+                {
+                    <div class="d-flex align-items-center pb-2 mb-3 w-100">
+                        <div class="flex-grow-1 pr-2">
+                            <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#createEventModal">
+                                <i class="fa fa-plus"></i> Создать
+                            </button>
+                        </div>
+                        <button type="button" class="btn" data-bs-toggle="modal" style="margin: 0 2.5px" data-bs-target="#exportModal" title="Сформировать отчёт">
+                            <i class="fa fa-file"></i>
+                        </button>
+                    </div>
+                }
+
+                <div class="collapse w-100" id="filterPanel">
+                    <div class="card card-body border rounded shadow-sm mb-4 bg-light">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label small fw-bold text-muted text-uppercase">Статус мероприятия</label>
+                                <select class="form-select status-select">
+                                    <option value="Все">Все статусы</option>
+                                    <option value="В планах">В планах</option>
+                                    <option value="Отменено">Отменено</option>
+                                    <option value="Проведено">Проведено</option>
+                                </select>
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input available-space" type="checkbox" id="checkPlaces">
+                                    <label class="form-check-label" for="checkPlaces">
+                                        Есть свободные места
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-4 text-md-end">
+                                <button class="btn-link text-decoration-none clear-filter-btn px-0">
+                                    <i class="fa fa-times-circle"></i> Сбросить фильтры
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row row-cols-1 row-cols-xl-2 g-4 mb-4" id="eventsGrid">
+                    @foreach (var item in Model.OrderByDescending(e => e.EventDate))
+                    {
+                        <div class="col event-card-container">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-header bg-white d-flex justify-content-between align-items-center border-0 py-3">
+                                    <div class="d-flex align-items-center">
+                                        <img src="/resources/picture.jpg" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                        <span class="fw-bold text-orange">Работа России</span>
+                                    </div>
+
+                                    @if (User.Identity.IsAuthenticated && (User.FindFirst("RoleId").Value == "3" || User.FindFirst("RoleId").Value == "2"))
+                                    {
+                                        <div class="dropdown">
+                                            <button class="actions btn-light shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 40px; height: 40px; border-radius: 50%;">
+                                                <i class="fa fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li>
+                                                    <button type="button" class="dropdown-item menu-item"
+                                                            onclick="openEditModal('@item.EventId',
+                                                               '@System.Web.HttpUtility.JavaScriptStringEncode(item.Title)',
+                                                               '@System.Web.HttpUtility.JavaScriptStringEncode(item.Description)',
+                                                               '@item.AvailableSpace',
+                                                               '@item.Status',
+                                                               '@item.EventDate.ToString("yyyy-MM-dd")',
+                                                               '@Url.Action("GetEventImage", "Events", new { photoId = item.PhotoId })',
+                                                               '@(item.Requests?.Where(r => r.Status != "Отклонено").Sum(r => r.PeopleNumber) ?? 0)')">
+                                                        <i class="fa fa-edit me-2"></i>Изменить
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <form asp-action="Delete" asp-route-id="@item.EventId" method="post">
+                                                        <button type="submit" class="dropdown-item text-danger menu-item delete-btn" onclick="return confirm('Удалить?')">
+                                                            <i class="fa fa-trash me-2"></i>Удалить
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="row g-0 flex-grow-1" style="cursor:pointer;"
+                                     onclick="openViewModal('@System.Web.HttpUtility.JavaScriptStringEncode(item.Title)',
+                                                   '@System.Web.HttpUtility.JavaScriptStringEncode(item.Description)',
+                                                   '@item.AvailableSpace', 
+                                                   '@item.Status', 
+                                                   '@item.EventDate.ToShortDateString()',
+                                                   '@Url.Action("GetEventImage", "Events", new { photoId = item.PhotoId })')">
+                                    <div class="col-sm-4 bg-light d-flex align-items-center justify-content-center">
+                                        <img src="@Url.Action("GetEventImage", "Events", new { photoId = item.PhotoId })"
+                                             class="img-fluid rounded-start p-2"
+                                             style="max-height: 200px; width: 100%; object-fit: cover;"
+                                             alt="@item.Title">
+                                    </div>
+                                    <div class="col-sm-8">
+                                        <div class="card-body">
+                                            <h5 class="card-title fw-bold">
+                                                @item.Title
+                                            </h5>
+                                            <p class="card-text text-muted small mb-2 text-truncate-3">@item.Description</p>
+                                            <div class="mb-2">
+                                                <span class="badge bg-light text-dark border"><i class="fa fa-users me-1"></i> Свободных мест: @item.AvailableSpace</span>
+                                                <span class="badge @(item.Status == "Отменено" ? "bg-danger-subtle text-danger" : "bg-success-subtle text-success") border">
+                                                    @item.Status
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="card-footer bg-white border-0 d-flex justify-content-between align-items-center pb-3">
+                                    <small class="text-muted"><i class="fa fa-calendar me-1"></i> @item.EventDate.ToShortDateString()</small>
+                                    @if (User.Identity.IsAuthenticated && User.FindFirst("RoleId").Value == "1" && item.AvailableSpace > 0 && item.Status == "В планах")
+                                    {
+                                        <button class="btn btn-sm btn-primary px-3" onclick="openRequestModal(@item.EventId, '@item.Title', @item.AvailableSpace)">
+                                            Подать заявку
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+
+<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="exportModalLabel">Экспорт отчета</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Events" asp-action="ExportToXlsx" method="post">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Выберите месяц и год для отчета</label>
+                        <input type="month" name="selectedMonth" class="form-control"
+                               value="@DateTime.Now.ToString("yyyy-MM")" required />
+                    </div>
+                </div>
+                <div class="modal-footer px-4 pb-4 border-0 d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary px-4">Сгенерировать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="viewEventModal" tabindex="-1" aria-labelledby="viewEventModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold text-orange" id="viewEventModalLabel">Детали мероприятия</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4 bg-light rounded overflow-hidden" style="max-height: 250px;">
+                    <img id="viewEventImage" src="/resources/plug.png" class="img-fluid w-100" style="max-height: 250px; object-fit: cover;">
+                </div>
+
+                <h4 id="viewEventTitle" class="fw-bold mb-3"></h4>
+
+                <div class="d-flex gap-2 mb-3">
+                    <span id="viewEventStatus" class="badge border"></span>
+                    <span class="badge bg-light text-dark border">
+                        <i class="fa fa-users me-1"></i> Мест: <span id="viewEventSpace"></span>
+                    </span>
+                    <span class="badge bg-light text-dark border">
+                        <i class="fa fa-calendar me-1"></i> <span id="viewEventDate"></span>
+                    </span>
+                </div>
+
+                <label class="form-label fw-bold small text-muted text-uppercase">Описание</label>
+                <p id="viewEventDescription" class="text-muted" style="line-height: 1.6; white-space: pre-wrap;"></p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editEventModal" tabindex="-1" aria-labelledby="editEventModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-orange" id="editEventModalLabel">Редактирование мероприятия</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="editEventForm" asp-controller="Events" asp-action="Edit" method="post" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <input type="hidden" name="EventId" id="editEventId" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Название</label>
+                        <input name="Title" id="editEventTitle" class="form-control" placeholder="Введите название..." required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Описание</label>
+                        <textarea name="Description" id="editEventText" class="form-control"
+                                  style="resize: none; overflow: hidden; min-height: 80px;"
+                                  placeholder="О чем это мероприятие?" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Афиша / Изображение</label>
+                        <input type="file" name="ImageFile" id="editImageInput" class="form-control" accept="image/*" />
+                        <div class="form-text small text-muted">Оставьте пустым, если не хотите менять картинку.</div>
+
+                        <div class="mt-2 text-center bg-light rounded overflow-hidden" style="max-height: 150px;">
+                            <img id="editImagePreview" src="/resources/plug.png" class="img-fluid" style="max-height: 150px; object-fit: cover;">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Мест</label>
+                            <input name="AvailableSpace" id="editEventAvailableSpace" type="number" class="form-control" min="0" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Дата</label>
+                            <input name="EventDate" id="editEventDate" type="date" class="form-control" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Статус проведения</label>
+                        <select name="Status" id="editEventStatus" class="form-control form-select">
+                            <option value="В планах">В планах</option>
+                            <option value="Проведено">Проведено</option>
+                            <option value="Отменено">Отменено</option>
+                        </select>
+                    </div>
+
+                    <div class="modal-footer px-0 pb-0 border-0 pt-3" style="display: flex; justify-content: space-between">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary px-4">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="createEventModal" tabindex="-1" aria-labelledby="createEventModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-orange" id="createEventModalLabel">Новое мероприятие</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form asp-controller="Events" asp-action="Create" method="post" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Название</label>
+                        <input name="Title" class="form-control" placeholder="Введите название..." required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Описание</label>
+                        <textarea name="Description" id="createEventText" class="form-control"
+                                  style="resize: none; overflow: hidden; min-height: 80px;"
+                                  placeholder="О чем это мероприятие?" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Афиша / Изображение</label>
+                        <input type="file" name="ImageFile" id="imageInput" class="form-control" accept="image/*" />
+                        <div class="form-text small text-muted">Рекомендуемые форматы: PNG, JPG.</div>
+
+                        <div id="imagePreviewContainer" class="mt-2 text-center d-none">
+                            <img id="imagePreview" src="#" alt="Предпросмотр" class="img-fluid rounded border shadow-sm" style="max-height: 150px;" />
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Мест</label>
+                            <input name="AvailableSpace" type="number" class="form-control" min="1" value="10" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Дата</label>
+                            <input name="EventDate" type="date" class="form-control" required
+                                   value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                        </div>
+                    </div>
+
+                    <div class="modal-footer px-0 pb-0 border-0 pt-3" style="display: flex; justify-content: space-between">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary px-4">Добавить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="requestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Подача заявки</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="requestForm" asp-controller="Requests" asp-action="Create" method="post">
+                    <input type="hidden" id="modalEventId" name="EventId" />
+                    <input type="hidden" name="UserId" value="@User.FindFirst("UserId")?.Value" />
+
+                    <div class="form-group mb-3">
+                        <textarea name="Content" id="modalContent" style="width:100%; min-height:100px; resize: none;"
+                                  class="form-control" placeholder="Текст заявки" required></textarea>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Учреждение</label>
+                        <input name="Institution" class="form-control" value="Нет" />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="control-label">Количество человек</label>
+                        <input name="PeopleNumber" id="modalPeopleNumber" type="number" class="form-control" value="1" min="1" />
+                    </div>
+
+                    <div class="modal-footer px-0 pb-0" style="display: flex; justify-content: space-between">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Подать заявку</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.querySelector('.search-input');
+        const statusFilter = document.querySelector('.status-select');
+        const hasPlacesFilter = document.querySelector('.available-space');
+        const cards = document.querySelectorAll('.event-card-container');
+
+        function filterEvents() {
+            const query = searchInput.value.toLowerCase().trim();
+            const selectedStatus = statusFilter ? statusFilter.value : "Все";
+            const onlyWithPlaces = hasPlacesFilter ? hasPlacesFilter.checked : false;
+
+            cards.forEach(container => {
+                const title = container.querySelector('.card-title').textContent.toLowerCase();
+                const status = container.querySelector('.badge:last-child').textContent.trim();
+                const placesText = container.querySelector('.badge:first-child').textContent;
+                const placesCount = parseInt(placesText.replace(/\D/g, "")) || 0;
+
+                const matchesSearch = title.includes(query);
+                const matchesStatus = (selectedStatus === "Все" || status === selectedStatus);
+                const matchesPlaces = (!onlyWithPlaces || placesCount > 0);
+
+                if (matchesSearch && matchesStatus && matchesPlaces) {
+                    container.style.display = "block";
+                } else {
+                    container.style.display = "none";
+                }
+            });
+        }
+
+        if (searchInput) searchInput.addEventListener('input', filterEvents);
+        if (statusFilter) statusFilter.addEventListener('change', filterEvents);
+        if (hasPlacesFilter) hasPlacesFilter.addEventListener('change', filterEvents);
+
+        const resetBtn = document.querySelector('.clear-filter-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                if (searchInput) searchInput.value = '';
+                if (statusFilter) statusFilter.value = 'Все';
+                if (hasPlacesFilter) hasPlacesFilter.checked = false;
+                filterEvents();
+            });
+        }
+    });
+
+    const textarea = document.getElementById('createEventText');
+
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+
+        const modal = document.getElementById('createEventModal');
+        modal.addEventListener('shown.bs.modal', function () {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+            textarea.focus();
+        });
+    }
+
+    document.getElementById('imageInput').addEventListener('change', function (event) {
+        const file = event.target.files[0];
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        const previewImage = document.getElementById('imagePreview');
+
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                previewImage.src = e.target.result;
+                previewContainer.classList.remove('d-none');
+            }
+            reader.readAsDataURL(file);
+        } else {
+            previewContainer.classList.add('d-none');
+        }
+    });
+
+    document.getElementById('createEventModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('imageInput').value = '';
+        document.getElementById('imagePreviewContainer').classList.add('d-none');
+    });
+
+    function openRequestModal(eventId, eventTitle, availableSpace) {
+        document.getElementById('modalEventId').value = eventId;
+        document.getElementById('modalTitle').innerText = 'Заявка на: ' + eventTitle;
+
+        const peopleInput = document.getElementById('modalPeopleNumber');
+        peopleInput.setAttribute('max', availableSpace);
+        peopleInput.value = 1;
+
+        var myModal = new bootstrap.Modal(document.getElementById('requestModal'));
+        myModal.show();
+    }
+
+    document.getElementById('requestForm').onsubmit = async function (e) {
+        e.preventDefault();
+
+        const peopleInput = document.getElementById('modalPeopleNumber');
+        const enteredValue = parseInt(peopleInput.value) || 0;
+        const maxValue = parseInt(peopleInput.getAttribute('max')) || 0;
+
+        if (enteredValue > maxValue) {
+            alert('Ошибка: Количество человек превышает число свободных мест (' + maxValue + ')!');
+            return;
+        }
+
+        const form = e.target;
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    "RequestVerificationToken": document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    alert("Заявка успешно подана!");
+                    bootstrap.Modal.getInstance(document.getElementById('requestModal')).hide();
+                } else {
+                    alert(result.message || "Ошибка при валидации");
+                }
+            } else {
+                alert("Ошибка сервера при отправке.");
+            }
+        } catch (error) {
+            console.error("Ошибка:", error);
+            alert("Не удалось отправить заявку.");
+        }
+    };
+
+    function openEditModal(id, title, description, space, status, date, imageUrl, bookedSpace) {
+        document.getElementById('editEventId').value = id;
+        document.getElementById('editEventTitle').value = title;
+        document.getElementById('editEventText').value = description;
+        document.getElementById('editEventStatus').value = status;
+        document.getElementById('editEventDate').value = date;
+
+        document.getElementById('editImageInput').value = '';
+        document.getElementById('editImagePreview').src = imageUrl ? imageUrl : '/resources/plug.png';
+
+        const available = parseInt(space) || 0;
+        const booked = parseInt(bookedSpace) || 0;
+
+        const totalCapacity = available + booked;
+
+        const inputAvailableSpace = document.getElementById('editEventAvailableSpace');
+        if (inputAvailableSpace) {
+            inputAvailableSpace.value = totalCapacity;
+            inputAvailableSpace.setAttribute('min', booked);
+        }
+
+        const editModal = new bootstrap.Modal(document.getElementById('editEventModal'));
+        editModal.show();
+    }
+
+    document.getElementById('editImageInput')?.addEventListener('change', function (event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                document.getElementById('editImagePreview').src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    document.getElementById('editEventForm')?.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const actionUrl = this.getAttribute('action') || '/Events/Edit';
+
+        try {
+            const response = await fetch(actionUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+
+                if (result.success) {
+                    const modalElement = document.getElementById('editEventModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                    location.reload();
+                } else {
+                    alert(result.message);
+                }
+            } else {
+                alert('Критическая ошибка сервера. Не удалось сохранить изменения.');
+            }
+        } catch (error) {
+            console.error('Ошибка отправки формы:', error);
+            alert('Произошла ошибка сети при отправке формы.');
+        }
+    });
+
+    function openViewModal(title, description, space, status, date, imageUrl) {
+        document.getElementById('viewEventTitle').innerText = title;
+        document.getElementById('viewEventDescription').innerText = description;
+        document.getElementById('viewEventSpace').innerText = space;
+        document.getElementById('viewEventDate').innerText = date;
+
+        const eventImage = document.getElementById('viewEventImage');
+        if (imageUrl) {
+            eventImage.src = imageUrl;
+        } else {
+            eventImage.src = '/resources/plug.png';
+        }
+
+        const statusBadge = document.getElementById('viewEventStatus');
+        statusBadge.innerText = status;
+
+        statusBadge.className = status === "Отменено"
+            ? "badge bg-danger-subtle text-danger border"
+            : "badge bg-success-subtle text-success border";
+
+        const viewModal = new bootstrap.Modal(document.getElementById('viewEventModal'));
+        viewModal.show();
+    }
+</script>
